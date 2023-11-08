@@ -99,5 +99,46 @@ jobs:
       - name: Test Bundle Server
         run: |
           bash scripts/workflow/test-server.sh
-  Test:
-    uses: ./.github/workflows/test.yml
+  test:
+    name: Node.js Test CI
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-pnpm-modules
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - uses: pnpm/action-setup@v2.4.0
+        with:
+          version: 8.x
+          run_install: false
+      - name: Install Dependencies
+        run: |
+          pnpm i
+      - name: Run Lint
+        run: |
+          npm run lint
+
+      - name: Run Tests
+        run: |
+          npm run test
+
+        env:
+          CI: true
